@@ -18,7 +18,7 @@ class Videos(models.Model):
     headline = models.CharField(max_length=50, blank=True)
     discretion = models.TextField(blank=True)
     video = models.FileField(upload_to="uploads/videos", blank=True)
-    genre = models.CharField(choices=GENRE_CHOICES, default="customer", max_length=10, blank=True)
+    genre = models.CharField(choices=GENRE_CHOICES, default="customer", max_length=25, blank=True)
     created_at = models.DateTimeField(auto_now=False, auto_now_add=True)
     thumbnail = models.FileField(upload_to="uploads/thumbnails")
 

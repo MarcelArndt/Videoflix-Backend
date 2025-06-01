@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from service_app.models import Profiles
 from django.contrib.auth.models import User
-
+from django.shortcuts import get_object_or_404
 
 class RegestrationSerializer(serializers.ModelSerializer):
     repeated_password = serializers.CharField(write_only = True)
@@ -42,20 +42,20 @@ class RegestrationSerializer(serializers.ModelSerializer):
         return user_profiles
 
 class LoginSerializer(serializers.Serializer):
-        username = serializers.CharField(write_only=True)
+        email = serializers.CharField(write_only=True)
         password = serializers.CharField(write_only=True)
 
         def validate(self, data):
-            username = data.get("username")
+            email = data.get("email")
             password = data.get("password")
-            user = User.objects.filter(username=username).first()
+            user = get_object_or_404(User, email=email)
             if not user:
-                raise serializers.ValidationError({'username':"wrong username"})
+                raise serializers.ValidationError({'email':"wrong email"})
 
             if not user.check_password(password):
                  raise serializers.ValidationError({'password':"wrong password"})
             try:
-                user_profile = user.inner_user
+                user_profile = user.abstract_user
             except:
                 raise serializers.ValidationError({'user':"No User found"})
 
