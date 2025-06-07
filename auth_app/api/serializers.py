@@ -48,12 +48,18 @@ class LoginSerializer(serializers.Serializer):
         def validate(self, data):
             email = data.get("email")
             password = data.get("password")
-            user = get_object_or_404(User, email=email)
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                raise serializers.ValidationError({'email': "wrong email"})
+            
             if not user:
                 raise serializers.ValidationError({'email':"wrong email"})
 
             if not user.check_password(password):
                  raise serializers.ValidationError({'password':"wrong password"})
+            
             try:
                 user_profile = user.abstract_user
             except:

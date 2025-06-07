@@ -1,5 +1,5 @@
 from rest_framework import generics
-from service_app.models import Videos, Profiles
+from service_app.models import Video, Profiles
 from .serializers import ProfilesSerializer, VideosSerializer
 
 class ProfilesListView(generics.ListAPIView):
@@ -11,9 +11,9 @@ class ProfilesDetailView(generics.RetrieveAPIView):
     serializer_class = ProfilesSerializer
 
 class VideosListView(generics.ListCreateAPIView):
-    queryset = Videos.objects.all()
+    queryset = Video.objects.all()
     serializer_class = VideosSerializer
 
-class VideosDetailView(generics.RetrieveAPIView):
-    queryset = Videos.objects.all()
+class VideosDetailView(generics.RetrieveDestroyAPIView):
+    queryset = Video.objects.all()
     serializer_class = VideosSerializer
