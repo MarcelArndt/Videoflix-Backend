@@ -33,7 +33,8 @@ class LoginView(ObtainAuthToken):
                     "username" : auth_user.user.username,
                     "email" : auth_user.user.email,
                     "token" : token.key,
-                    "user_id" : auth_user.id
+                    "user_id" : auth_user.id,
+                    "email_is_confirmed" : auth_user.email_is_confirmed
                   }
                   
                   return Response(data, status=status.HTTP_200_OK)

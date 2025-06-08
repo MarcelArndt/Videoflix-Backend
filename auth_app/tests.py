@@ -13,7 +13,6 @@ class AuthTests(APITestCase):
         Profiles.objects.create(user = user)
 
 
-
     def test_existing_username_raises_error(self):
             data = {
                 'username': 'Lea',

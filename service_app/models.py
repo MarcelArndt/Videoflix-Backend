@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
 
 GENRE_CHOICES = [
     ("crime", "Crime"),
@@ -14,6 +15,7 @@ GENRE_CHOICES = [
 class Profiles(models.Model):
     user = models.OneToOneField(User, verbose_name=("User"), on_delete=models.CASCADE, related_name="abstract_user")
     email_is_confirmed = models.BooleanField(default=False)
+    email_token = models.UUIDField(default=uuid.uuid4, editable=False)
 
 class Video(models.Model):
     headline = models.CharField(max_length=50)
