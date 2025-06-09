@@ -1,10 +1,15 @@
 
-from auth_app.api.serializers import RegestrationSerializer, LoginSerializer
+from auth_app.api.serializers import RegestrationSerializer, LoginSerializer, SendEmailForResetPasswordSerializer, ResetPasswordSerializer
 from rest_framework import status
 from rest_framework.views import APIView 
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
+from service_app.models import Profiles
+from django.http import HttpResponseRedirect
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 class RegestrationView(APIView):
     def post(self, request, *args, **kwargs):
@@ -41,3 +46,33 @@ class LoginView(ObtainAuthToken):
             else:
                  data = serializer.errors
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyEmailView(APIView):
+    def get(self, request):
+        token = request.GET.get('token')
+        url = os.environ.get('URL_FOR_VERIFY_USER')
+        try:
+            user = Profiles.objects.get(email_token=token)
+            user.email_is_confirmed = True
+            user.save()
+        except Profiles.DoesNotExist:
+            pass
+        finally:
+            return HttpResponseRedirect(url)
+
+
+
+class SendEmailForResetPasswordView(APIView):
+    def post(self, request):
+        serializer = SendEmailForResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class SetNewPasswordView(APIView):
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

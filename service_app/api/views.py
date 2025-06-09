@@ -22,15 +22,3 @@ class VideosListView(generics.ListCreateAPIView):
 class VideosDetailView(generics.RetrieveDestroyAPIView):
     queryset = Video.objects.all()
     serializer_class = VideosSerializer
-
-
-class VerifyEmailView(APIView):
-    def get(self, request):
-        token = request.GET.get('token')
-        try:
-            user = Profiles.objects.get(email_token=token)
-            user.email_is_confirmed = True
-            user.save()
-            return Response({'message': 'E-Mail bestätigt!'}, status=status.HTTP_200_OK)
-        except Profiles.DoesNotExist:
-            return Response({'error': 'Token ungültig'}, status=status.HTTP_400_BAD_REQUEST)

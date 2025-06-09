@@ -2,11 +2,8 @@ import os
 import subprocess
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Video, VideoFile, Profiles
+from .models import Video, VideoFile
 from django.conf import settings
-from django.urls import reverse
-from django.template.loader import render_to_string
-from django.core.mail import EmailMultiAlternatives
 from django.core.files.base import ContentFile
 
 RESOLUTIONS = {
@@ -18,21 +15,6 @@ RESOLUTIONS = {
         },
         'thumbnails': '215:120'
     }
-
-
-@receiver(post_save, sender=Profiles)
-def send_verification_email(sender, instance, created, **kwargs):
-    if created:
-        subject = "Willkommen bei Videoflix"
-        from_email = "noreply@videoflix.de"
-        context = {
-            "username": instance.user.username,
-            "verify_link": f"http://127.0.0.1:8000/{reverse('verify_email')}?token={instance.email_token}"
-        }
-        html_content = render_to_string("emails/verification_email.html", context)
-        email = EmailMultiAlternatives(subject, "", from_email, [instance.user.email])
-        email.attach_alternative(html_content, "text/html")
-        email.send()
 
 
 @receiver(post_save, sender=Video)
