@@ -6,6 +6,7 @@ from service_app.models import Profiles
 from django.db.models.signals import post_save, post_delete
 from rest_framework.authtoken.models import Token
 from django.conf import settings
+from django.contrib.auth.models import User
 
 @receiver(post_save, sender=Profiles)
 def send_verification_email(sender, instance, created, **kwargs):
@@ -21,9 +22,7 @@ def send_verification_email(sender, instance, created, **kwargs):
         email.attach_alternative(html_content, "text/html")
         email.send()
 
-@receiver(post_delete, sender=settings.AUTH_USER_MODEL)
-def delete_auth_token(sender, instance=None, **kwargs):
-    try:
-        Token.objects.get(user=instance).delete()
-    except Token.DoesNotExist:
-        pass
+@receiver(post_delete, sender=Profiles)
+def delete_auth_token(sender, instance, **kwargs):
+        User.objects.get(email=instance.user.email).delete()
+        
