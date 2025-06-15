@@ -19,7 +19,7 @@ RESOLUTIONS = {
 
 @receiver(post_save, sender=Video)
 def generate_video_data(sender, instance, created, **kwargs):
-    if not created or not instance.original_file:
+    if not created or not instance.url:
         return
     generate_video_thumbnail(instance)
     generate_video_versions(instance)
@@ -29,7 +29,7 @@ def generate_video_versions(instance):
     output_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted')
     os.makedirs(output_dir, exist_ok=True)
     
-    video = instance.original_file.path
+    video = instance.url.path
     filename, ending = os.path.splitext(os.path.basename(video))
 
     for resolution, size in RESOLUTIONS['videos'].items():
@@ -43,12 +43,12 @@ def generate_video_versions(instance):
 
 
 def generate_video_thumbnail(instance):
-    video = instance.original_file.path
+    video = instance.url.path
     output_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/thumbnails')
     os.makedirs(output_dir, exist_ok=True)
     name, _ = os.path.splitext(os.path.basename(video))
     thumbnail_path = os.path.join(settings.MEDIA_ROOT, 'uploads/thumbnails', f"{instance.id}_thumb.jpg")
-    cmd = ['ffmpeg', '-ss', '00:00:08', '-i', video, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
+    cmd = ['ffmpeg', '-y', '-ss', '00:00:08', '-i', video, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
     try:
         subprocess.run(cmd, check=True)
         with open(thumbnail_path, 'rb') as image:

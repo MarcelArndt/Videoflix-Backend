@@ -26,11 +26,11 @@ class Profiles(models.Model):
 
 class Video(models.Model):
     headline = models.CharField(max_length=50)
-    discretion = models.TextField()
+    description = models.TextField()
     genre = models.CharField(choices=GENRE_CHOICES, default="customer", max_length=25)
     created_at = models.DateTimeField(auto_now_add=True)
     thumbnail = models.FileField(upload_to="uploads/thumbnails", blank=True)
-    original_file = models.FileField(upload_to="uploads/videos/originals")
+    url = models.FileField(upload_to="uploads/videos/originals")
 
     def __str__(self):
         return f'Id: {self.pk} | HeadLine: {self.headline} |  Genre:{self.genre} | created at: {self.created_at}' 
