@@ -18,5 +18,5 @@ try:
     else:
         print("❌ Could not retrieve cached value")
         
-except Exception as e:
-    print(f"❌ Django-Redis connection failed: {e}")
+except Exception as error:
+    print(f"❌ Django-Redis connection failed: {error}")

@@ -5,6 +5,7 @@ from django.dispatch import receiver
 from .models import Video, VideoFile
 from django.conf import settings
 from django.core.files.base import ContentFile
+import django_rq
 
 RESOLUTIONS = {
         'videos': {
@@ -21,6 +22,9 @@ RESOLUTIONS = {
 def generate_video_data(sender, instance, created, **kwargs):
     if not created or not instance.url:
         return
+    #queue = django_rq.get_queue('default', autocommit=True)
+    #queue.enqueue(generate_video_thumbnail, instance)
+    #queue.enqueue(generate_video_versions, instance)
     generate_video_thumbnail(instance)
     generate_video_versions(instance)
 
@@ -55,3 +59,6 @@ def generate_video_thumbnail(instance):
             instance.thumbnail.save(f"uploads/thumbnails/{instance.id}_thumb.jpg", ContentFile(image.read()), save=True)
     except subprocess.CalledProcessError as error:
         print(f"[ffmpeg] Fehler bei Thumbnail: {error}")
+
+
+

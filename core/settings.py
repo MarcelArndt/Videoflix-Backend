@@ -20,13 +20,19 @@ INSTALLED_APPS = [
     'service_app.apps.ServiceAppConfig',
     'auth_app.apps.AuthAppConfig',
     'django_rq',
+    'debug_toolbar',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
 ]
 
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     'whitenoise.middleware.WhiteNoiseMiddleware', 
     "django.contrib.sessions.middleware.SessionMiddleware",
