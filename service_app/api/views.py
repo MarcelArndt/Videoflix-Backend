@@ -26,7 +26,7 @@ class VideosListView(APIView):
         if cached_response:
             return Response(cached_response)
 
-        videos = Video.objects.prefetch_related('files').all()
+        videos = Video.objects.all()
         serialized = VideosSerializer(videos, many=True, context={'request': request}).data
         newest = videos.order_by('-created_at')[:10]
         grouped = {}
