@@ -83,6 +83,17 @@ class EmailTokenObtainSerializer(TokenObtainPairSerializer):
             data = super().validate({'username':user.username, 'password': password})
             print(data )
             return data
+    
+class UserIsAuthenticadeAndVerified(serializers.Serializer):
+    email_confirmed = serializers.SerializerMethodField()
+    def get_email_confirmed(self, obj):
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if user and hasattr(user, "abstract_user"):
+            return user.abstract_user.email_is_confirmed
+        return False
+
            
         
 class SendEmailForResetPasswordSerializer(serializers.Serializer):

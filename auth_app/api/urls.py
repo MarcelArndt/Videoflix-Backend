@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegestrationView, VerifyEmailView, SendEmailForResetPasswordView, SetNewPasswordView, ResendEmailView, CookieTokenObtainView, CookieTokenRefreshView, CookieTokenLogoutView
+from .views import RegestrationView, VerifyEmailView, SendEmailForResetPasswordView, SetNewPasswordView, ResendEmailView, CookieTokenObtainView, CookieTokenRefreshView, CookieTokenLogoutView, CookieIsAuthenticatedAndVerifiedView
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('resend-email/', ResendEmailView.as_view(), name='resend-email'),
     path('logout/', CookieTokenLogoutView.as_view(), name='logout'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+    path('is-authenticated/', CookieIsAuthenticatedAndVerifiedView.as_view(), name='token_is_auth' )
 ]

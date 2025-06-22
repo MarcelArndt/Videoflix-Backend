@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.core.cache import cache
+from auth_app.auth import CookieJWTAuthentication
 
 class ProfilesListView(generics.ListAPIView):
     queryset = Profiles.objects.all()
@@ -16,7 +17,9 @@ class ProfilesDetailView(generics.RetrieveAPIView):
     serializer_class = ProfilesSerializer
 
 class VideosListView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+
     def groupFactory(self, serialized, request):
         videos = Video.objects.all()
         newest = videos.order_by('-created_at')[:10]
@@ -37,6 +40,8 @@ class VideosListView(APIView):
         
 
     def get(self, request):
+        access_token = request.COOKIES.get('access_key')
+        print("Cookies:", access_token)
         cache_key = 'video_list_view'
         cached_response = cache.get(cache_key)
 
@@ -50,6 +55,8 @@ class VideosListView(APIView):
         return Response(grouped)
     
     def post(self, request):
+        access_token = request.COOKIES.get('access_key')
+        print("Cookies:", access_token)
         serializer = VideosSerializer(data= request.data, context={'request': request})
         if serializer.is_valid():
             cache.delete("video_list_view")
@@ -70,7 +77,6 @@ class VideosDetailView(generics.RetrieveDestroyAPIView):
 
 class VideoProgressListCreateView(generics.ListCreateAPIView):
     serializer_class = VideoProgressSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -89,7 +95,6 @@ class VideoProgressListCreateView(generics.ListCreateAPIView):
 
 class VideoProgressDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = VideoProgressSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user

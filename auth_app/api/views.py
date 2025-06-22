@@ -1,5 +1,5 @@
 
-from auth_app.api.serializers import RegestrationSerializer, SendEmailForResetPasswordSerializer, ResetPasswordSerializer, ResetValidationEmailSerializer, EmailTokenObtainSerializer
+from auth_app.api.serializers import RegestrationSerializer, SendEmailForResetPasswordSerializer, ResetPasswordSerializer, ResetValidationEmailSerializer, EmailTokenObtainSerializer, UserIsAuthenticadeAndVerified
 from rest_framework import status
 from rest_framework.views import APIView 
 from rest_framework.response import Response
@@ -11,6 +11,12 @@ import os
 load_dotenv()
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 from datetime import datetime, timedelta
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from auth_app.auth import CookieJWTAuthentication
+
+#SECURE = os.environ.get('SECURE', default=False),
+SECURE = False
 
 class RegestrationView(APIView):
     def post(self, request, *args, **kwargs):
@@ -30,7 +36,6 @@ class RegestrationView(APIView):
 class CookieTokenLogoutView(APIView):
     def post(self, request, *args, **kwargs):
         response = Response({'message': 'Logout was successfully.'},status=status.HTTP_200_OK)
-
         expires = datetime.now() - timedelta(days=1)
 
         response.set_cookie(
@@ -38,7 +43,7 @@ class CookieTokenLogoutView(APIView):
             value = '',
             expires = expires,
             httponly = True,
-            secure = True,
+            secure = SECURE,
             samesite='Lax'
         )
 
@@ -47,13 +52,11 @@ class CookieTokenLogoutView(APIView):
             value = '',
             httponly = True,
             expires = expires,
-            secure = True,
+            secure = SECURE,
             samesite='Lax'
         )
 
         return response
-
-
     
 
 class CookieTokenObtainView(TokenObtainPairView):
@@ -77,7 +80,7 @@ class CookieTokenObtainView(TokenObtainPairView):
             value = str(access),
             httponly = True,
             expires=expires,
-            secure = True,
+            secure = SECURE,
             samesite='Lax'
         )
 
@@ -86,7 +89,7 @@ class CookieTokenObtainView(TokenObtainPairView):
             expires=expires,
             value = str(refresh),
             httponly = True,
-            secure = True,
+            secure = SECURE,
             samesite='Lax'
         )
 
@@ -110,10 +113,20 @@ class CookieTokenRefreshView(TokenRefreshView):
             key = 'access_key',
             value = str(access_token),
             httponly = True,
-            secure = True,
+            secure = SECURE,
             samesite='Lax'
         )
         return response
+    
+    
+class CookieIsAuthenticatedAndVerifiedView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+
+    def post(self, request):
+        serializer = UserIsAuthenticadeAndVerified(instance=request.user, context={'request': request})
+        return Response(serializer.data)
+    
 
 class VerifyEmailView(APIView):
     def get(self, request):
