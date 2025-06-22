@@ -25,3 +25,11 @@ class Video(models.Model):
 
     def __str__(self):
         return f'Id: {self.pk} | HeadLine: {self.headline} |  Genre:{self.genre} | created at: {self.created_at}' 
+
+
+class VideoProgress(models.Model):
+    profiles = models.ForeignKey(Profiles, on_delete=models.CASCADE, related_name='video_progress')
+    updated_at = models.DateTimeField(auto_now=True)
+    video = models.ForeignKey(Video, on_delete=models.CASCADE)
+    current_time = models.FloatField()
+    is_finished = models.BooleanField(default=False)

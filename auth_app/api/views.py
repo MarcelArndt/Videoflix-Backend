@@ -1,24 +1,23 @@
 
-from auth_app.api.serializers import RegestrationSerializer, LoginSerializer, SendEmailForResetPasswordSerializer, ResetPasswordSerializer, ResetValidationEmailSerializer
+from auth_app.api.serializers import RegestrationSerializer, SendEmailForResetPasswordSerializer, ResetPasswordSerializer, ResetValidationEmailSerializer, EmailTokenObtainSerializer
 from rest_framework import status
 from rest_framework.views import APIView 
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
 from service_app.models import Profiles
 from django.http import HttpResponseRedirect
 from dotenv import load_dotenv
+from rest_framework import status
 import os
 load_dotenv()
+from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
+from datetime import datetime, timedelta
 
 class RegestrationView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = RegestrationSerializer(data= request.data)
         if serializer.is_valid():
             saved_user = serializer.save()
-            token, create = Token.objects.get_or_create(user = saved_user.user)
             data = {
-                "token": token.key,
                 "username": saved_user.user.username,
                 "email": saved_user.user.email,
                 "user_id": saved_user.id
@@ -27,25 +26,94 @@ class RegestrationView(APIView):
             data = serializer.errors
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
         return Response(data, status=status.HTTP_201_CREATED)
+    
+class CookieTokenLogoutView(APIView):
+    def post(self, request, *args, **kwargs):
+        response = Response({'message': 'Logout was successfully.'},status=status.HTTP_200_OK)
 
-class LoginView(ObtainAuthToken):
-        def post(self, request, *args, **kwargs):
-            serializer = LoginSerializer(data=request.data)
-            if serializer.is_valid():
-                  auth_user = serializer.validated_data["user_profile"]
-                  token, create = Token.objects.get_or_create(user = auth_user.user)
-                  data = {
-                    "username" : auth_user.user.username,
-                    "email" : auth_user.user.email,
-                    "token" : token.key,
-                    "user_id" : auth_user.id,
-                    "email_is_confirmed" : auth_user.email_is_confirmed
-                  }
-                  
-                  return Response(data, status=status.HTTP_200_OK)
-            else:
-                 data = serializer.errors
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        expires = datetime.now() - timedelta(days=1)
+
+        response.set_cookie(
+            key = 'access_key',
+            value = '',
+            expires = expires,
+            httponly = True,
+            secure = True,
+            samesite='Lax'
+        )
+
+        response.set_cookie(
+            key = 'refresh_key',
+            value = '',
+            httponly = True,
+            expires = expires,
+            secure = True,
+            samesite='Lax'
+        )
+
+        return response
+
+
+    
+
+class CookieTokenObtainView(TokenObtainPairView):
+
+    serializer_class = EmailTokenObtainSerializer
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+
+        print(serializer.validated_data)
+
+        refresh = serializer.validated_data['refresh']
+        access = serializer.validated_data['access']
+        expires = datetime.now() + timedelta(days=7)
+        response = Response({'message':'Login successfully'},status=status.HTTP_200_OK)
+
+        response.set_cookie(
+            key = 'access_key',
+            value = str(access),
+            httponly = True,
+            expires=expires,
+            secure = True,
+            samesite='Lax'
+        )
+
+        response.set_cookie(
+            key = 'refresh_key',
+            expires=expires,
+            value = str(refresh),
+            httponly = True,
+            secure = True,
+            samesite='Lax'
+        )
+
+        return response
+    
+class CookieTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_key')
+        if not refresh_token:
+            return Response({'error':'Refresh token not found.'}, status=status.HTTP_400_BAD_REQUEST)            
+        serializer = self.get_serializer(data={'refresh':refresh_token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except:
+            return Response({'error':'Refresh token is invalid.'},status=status.HTTP_401_UNAUTHORIZED)
+
+        access_token = serializer.validated_data.get('access')
+
+        response = Response({'message': 'Access token is refreshed'},status=status.HTTP_201_CREATED)
+        response.set_cookie(
+            key = 'access_key',
+            value = str(access_token),
+            httponly = True,
+            secure = True,
+            samesite='Lax'
+        )
+        return response
 
 class VerifyEmailView(APIView):
     def get(self, request):

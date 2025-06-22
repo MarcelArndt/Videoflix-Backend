@@ -3,10 +3,11 @@ from service_app.models import Profiles
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.urls import reverse
 from dotenv import load_dotenv
 import os
-
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
@@ -14,6 +15,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
+from django.contrib.auth import authenticate
 
 load_dotenv()
 
@@ -54,27 +56,34 @@ class RegestrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(username = username, email = email, password = password)
         user_profiles = Profiles.objects.create(user = user)
         return user_profiles
+    
+class EmailTokenObtainSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
 
-class LoginSerializer(serializers.Serializer):
-        email = serializers.CharField(write_only=True)
-        password = serializers.CharField(write_only=True)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-        def validate(self, data):
+        if 'username' in self.fields:
+            self.fields.pop('username')
+
+
+    def validate(self, data):
             email = data.get("email")
             password = data.get("password")
+
             try:
                 user = User.objects.get(email=email)
             except User.DoesNotExist:
-                raise serializers.ValidationError({'email': "wrong email"})
-            if not user:
-                raise serializers.ValidationError({'email':"wrong email"})
+                raise serializers.ValidationError({'error': "Wrong email or password"})
+           
             if not user.check_password(password):
-                 raise serializers.ValidationError({'password':"wrong password"})
-            try:
-                user_profile = user.abstract_user
-            except:
-                raise serializers.ValidationError({'user':"No User found"})
-            return {"user_profile" : user_profile}
+                 raise serializers.ValidationError({'error':"Wrong email or password"})
+            
+            data = super().validate({'username':user.username, 'password': password})
+            print(data )
+            return data
+           
         
 class SendEmailForResetPasswordSerializer(serializers.Serializer):
     email = serializers.CharField(write_only=True)

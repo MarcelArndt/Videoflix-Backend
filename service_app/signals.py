@@ -1,13 +1,12 @@
 import os
 import subprocess
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Video
 from django.conf import settings
-from django.core.files.base import ContentFile
 import django_rq
 import glob
-import time
+import re
 
 # CMD_MP4 = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', output_path]
 # CMD_HLS = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time' '10', '-hls_playlist_type', 'vod', output_path]
@@ -84,6 +83,48 @@ def generate_video_thumbnail(instance, orignal_video_path):
         instance.save()
     except subprocess.CalledProcessError as error:
         print(f"[ffmpeg] Fehler bei Thumbnail: {error}")
+
+
+
+@receiver(post_delete, sender=Video)
+def delete_file(sender, instance, *args, **kwargs):
+    print(f"[Signal] Video mit ID {instance.id} gelöscht.")
+    print(instance.url.path)
+    delete_thumbnail(instance)
+    delete_video(instance)
+
+
+def delete_thumbnail(instance):
+    if instance.thumbnail:
+        thumb_path = os.path.join(settings.MEDIA_ROOT, instance.thumbnail.name)
+        if os.path.exists(thumb_path):
+            os.remove(thumb_path)
+    
+
+def delete_video(instance):
+    print(instance.url)
+    if not instance.url:
+        return
+    original_path = instance.url.path
+    filename, file_ending = os.path.splitext(os.path.basename(original_path))
+    base_filename = re.sub(r'_(master|360p|480p|720p|1080p)$', '', filename)
+    print(base_filename)
+
+    converted_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted')
+    pattern = os.path.join(converted_dir, f"{base_filename}_*")
+    matching_files = glob.glob(pattern)
+
+    for file in matching_files:
+        if os.path.isfile(file):
+            os.remove(file)
+
+    original_video_path = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/originals', base_filename + ".mp4")
+    if os.path.exists(original_video_path):
+        os.remove(original_video_path)
+
+    if os.path.exists(original_path):
+        os.remove(original_path)
+
 
 
 
