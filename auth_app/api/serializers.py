@@ -89,7 +89,6 @@ class UserIsAuthenticadeAndVerified(serializers.Serializer):
     def get_email_confirmed(self, obj):
         request = self.context.get("request")
         user = request.user if request else None
-
         if user and hasattr(user, "abstract_user"):
             return user.abstract_user.email_is_confirmed
         return False
