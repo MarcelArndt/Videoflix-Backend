@@ -37,7 +37,6 @@ class CookieTokenLogoutView(APIView):
     def post(self, request, *args, **kwargs):
         response = Response({'ok': True},status=status.HTTP_200_OK)
         expires = datetime.now() - timedelta(days=1)
-        print('reset Cookie')
 
         response.set_cookie(
             key = 'access_key',
@@ -67,10 +66,14 @@ class CookieTokenObtainView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
+
         serializer.is_valid(raise_exception = True)
 
-        print(serializer.validated_data)
+        if 'error' in serializer.validated_data:
+            response = Response({'ok':False},status=status.HTTP_401_UNAUTHORIZED) 
+            return response
 
+        
         refresh = serializer.validated_data['refresh']
         access = serializer.validated_data['access']
         expires = datetime.now() + timedelta(days=7)
@@ -99,7 +102,6 @@ class CookieTokenObtainView(TokenObtainPairView):
 class CookieTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh_key')
-        print(f"Refresh Token for Refresh: {refresh_token}")
         if not refresh_token:
             return Response({'ok':False}, status=status.HTTP_400_BAD_REQUEST)            
         serializer = self.get_serializer(data={'refresh':refresh_token})

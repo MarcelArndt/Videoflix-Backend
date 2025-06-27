@@ -71,17 +71,20 @@ class EmailTokenObtainSerializer(TokenObtainPairSerializer):
     def validate(self, data):
             email = data.get("email")
             password = data.get("password")
-
+            set_error = False
+            user = None
             try:
                 user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                raise serializers.ValidationError({'error': "Wrong email or password"})
-           
-            if not user.check_password(password):
-                 raise serializers.ValidationError({'error':"Wrong email or password"})
+                if user and not user.check_password(password):
+                    set_error = True
+            except :
+                set_error = True
+
+            if set_error:
+                data['error'] = {'message':'Wrong email or password'}
             
-            data = super().validate({'username':user.username, 'password': password})
-            print(data )
+            if user:
+                data = super().validate({'username':user.username, 'password': password})
             return data
     
 class UserIsAuthenticadeAndVerified(serializers.Serializer):
