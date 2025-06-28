@@ -13,7 +13,21 @@ class VideoProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = VideoProgress
         fields = '__all__'
-        read_only_fields = ['profile']
+        extra_kwargs = {
+            'profiles': {'write_only': True,'required': False},
+            'current_time': {'required': False},
+        }
+    
+    def validate(self, data):
+        video = data.get('video')
+        if video is None:
+            raise serializers.ValidationError({"error": "Video not found."})
+        data['current_time'] = data.get('current_time') or 0
+        data['is_finished'] = data.get('is_finished') or False
+        return data
+
+    def create(self, validated_data):
+        return super().create(validated_data)
 
 
 class ProfilesSerializer(serializers.ModelSerializer):

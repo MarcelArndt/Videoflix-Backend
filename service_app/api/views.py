@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.cache import cache
 from auth_app.auth import CookieJWTAuthentication
+from django.contrib.auth.models import User
 
 class ProfilesListView(generics.ListAPIView):
     queryset = Profiles.objects.all()
@@ -41,7 +42,6 @@ class VideosListView(APIView):
 
     def get(self, request):
         access_token = request.COOKIES.get('access_key')
-        print("Cookies:", access_token)
         cache_key = 'video_list_view'
         cached_response = cache.get(cache_key)
 
@@ -56,7 +56,6 @@ class VideosListView(APIView):
     
     def post(self, request):
         access_token = request.COOKIES.get('access_key')
-        print("Cookies:", access_token)
         serializer = VideosSerializer(data= request.data, context={'request': request})
         if serializer.is_valid():
             cache.delete("video_list_view")
@@ -76,29 +75,60 @@ class VideosDetailView(generics.RetrieveDestroyAPIView):
 
 
 class VideoProgressListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
     serializer_class = VideoProgressSerializer
 
     def get_queryset(self):
         user = self.request.user
+        profile = None
         if not user.is_authenticated:
             return VideoProgress.objects.none()
+        profile = user.abstract_user
 
-        queryset = VideoProgress.objects.filter(profile=user.profile)
-        video_id = self.request.query_params.get("video")
-        if video_id:
-            queryset = queryset.filter(video_id=video_id)
+        if not user.is_authenticated:
+            return VideoProgress.objects.none()
+        if not profile:
+            return VideoProgress.objects.none()
+        
+        queryset = VideoProgress.objects.filter(profiles=profile)
+        video = self.request.query_params.get("videoId")
+        if video:
+            queryset = queryset.filter(video=video)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+
+        if hasattr(self, 'existing_instance'):
+            serializer = self.get_serializer(self.existing_instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return response
+
     def perform_create(self, serializer):
-        serializer.save(profile=self.request.user.profile)
+        user = self.request.user
+        profiles = user.abstract_user
+        video = serializer.validated_data.get('video')
+        existing = VideoProgress.objects.filter(profiles=profiles, video=video).first()
+
+        if existing:
+            self.existing_instance = existing
+            return
+        
+        serializer.save(profiles=profiles)
 
 
 class VideoProgressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
     serializer_class = VideoProgressSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return VideoProgress.objects.none()
+        pk = self.kwargs.get("pk")
+        queryset = VideoProgress.objects.filter(pk=pk)
+        return queryset
+    
+    def perform_update(self, serializer):
+        return super().perform_update(serializer)
 
-        return VideoProgress.objects.filter(profile=user.profile)
