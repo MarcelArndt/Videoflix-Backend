@@ -23,8 +23,11 @@ class VideosListView(APIView):
 
     def groupFactory(self, serialized, request):
         videos = Video.objects.all()
-        newest = videos.order_by('-created_at')[:10]
+        amount = Video.objects.count()
         grouped = {}
+        if amount == 0:
+                return {}
+        newest = videos.order_by('-created_at')[:10]
         grouped['newOnVideoflix'] = {
             'title': 'New On Videoflix',
             'content': VideosSerializer(newest, many=True, context={'request': request}).data

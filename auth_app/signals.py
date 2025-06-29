@@ -15,7 +15,7 @@ def send_verification_email(sender, instance, created, **kwargs):
         from_email = "noreply@videoflix.de"
         context = {
             "username": instance.user.username,
-            "verify_link": f"http://127.0.0.1:8000/{reverse('verify_email')}?token={instance.email_token}"
+            "verify_link": f"http://127.0.0.1:8000/api/verify-email/?token={instance.email_token}"
         }
         html_content = render_to_string("emails/verification_email.html", context)
         email = EmailMultiAlternatives(subject, "", from_email, [instance.user.email])

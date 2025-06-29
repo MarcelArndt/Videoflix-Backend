@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from auth_app.auth import CookieJWTAuthentication
+from auth_app.permissions import AllowAnyButTrackAuth
+
 
 #SECURE = os.environ.get('SECURE', default=False),
 SECURE = True
@@ -124,12 +126,16 @@ class CookieTokenRefreshView(TokenRefreshView):
     
     
 class CookieIsAuthenticatedAndVerifiedView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAnyButTrackAuth]
     authentication_classes = [CookieJWTAuthentication]
 
     def post(self, request):
-        serializer = UserIsAuthenticadeAndVerified(instance=request.user, context={'request': request})
-        return Response(serializer.data)
+        if self.request.user and self.request.user.is_authenticated:
+             serializer = UserIsAuthenticadeAndVerified(instance=request.user, context={'request': request})
+             return Response({'authenticated': True, 'email_confirmed': serializer.data, 'message': 'User is authenticated' }, status=status.HTTP_200_OK)
+        else:
+             return Response({'authenticated': False, 'email_confirmed': None, 'message': 'User is not authenticated' }, status=status.HTTP_200_OK)
+
     
 
 class VerifyEmailView(APIView):
@@ -161,8 +167,11 @@ class SetNewPasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class ResendEmailView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+
     def post(self, request):
-        serializer = ResetValidationEmailSerializer(data=request.data)
+        serializer = ResetValidationEmailSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

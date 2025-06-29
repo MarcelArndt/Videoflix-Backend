@@ -156,24 +156,24 @@ class ResetPasswordSerializer(serializers.Serializer):
         return {"message": "password successfully reseted"}
 
 class ResetValidationEmailSerializer(serializers.Serializer):
-    user_id = serializers.CharField(write_only=True)
+
     def validate(self, data):
-        user_id = data.get("user_id")
-        user_profil = Profiles.objects.get(pk=user_id)
-        if not user_profil:
+        user = self.context['request'].user
+        profil =  user.abstract_user
+        if not profil:
             raise serializers.ValidationError({'error':"User not found"})
-        self.send_validation_email(user_profil)
+        self.send_validation_email(profil)
         return {"message": "email was sent."}
 
-    def send_validation_email(self, user_profil):
+    def send_validation_email(self, profil):
         subject = "Willkommen bei Videoflix"
         from_email = "noreply@videoflix.de"
         context = {
-            "username": user_profil.user.username,
-            "verify_link": f"http://127.0.0.1:8000/{reverse('verify_email')}?token={user_profil.email_token}"
+            "username": profil.user.username,
+            "verify_link": f"http://127.0.0.1:8000/api/verify-email/?token={profil.email_token}"
         }
         html_content = render_to_string("emails/verification_email.html", context)
-        email = EmailMultiAlternatives(subject, "", from_email, [user_profil.user.email])
+        email = EmailMultiAlternatives(subject, "", from_email, [profil.user.email])
         email.attach_alternative(html_content, "text/html")
         email.send()
     

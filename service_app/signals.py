@@ -2,11 +2,12 @@ import os
 import subprocess
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Video
+from .models import Video, VideoProgress
 from django.conf import settings
 import django_rq
 import glob
 import re
+
 
 # CMD_MP4 = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', output_path]
 # CMD_HLS = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time' '10', '-hls_playlist_type', 'vod', output_path]
@@ -26,10 +27,9 @@ RESOLUTIONS = {
 def generate_video_data(sender, instance, created, **kwargs):
     if not created or not instance.url:
         return
-    #queue = django_rq.get_queue('default', autocommit=True)
-    #queue.enqueue(generate_video_thumbnail, instance)
-    #queue.enqueue(generate_video_versions, instance)
-    generate_video_versions(instance)
+    queue = django_rq.get_queue('default', autocommit=True)
+    queue.enqueue(generate_video_versions, instance)
+    #generate_video_versions(instance)
 
 
 def generate_video_versions(instance):
@@ -62,6 +62,7 @@ def generate_master_playlist(filename,output_dir):
         '480p': 1500000,
         '360p': 800000,
     }
+
     with open(master_playlist_path, 'w') as file:
         for resolution, size in RESOLUTIONS['videos'].items():
             bandwidth = bandwidth_map.get(resolution, 1000000)
@@ -85,13 +86,19 @@ def generate_video_thumbnail(instance, orignal_video_path):
         print(f"[ffmpeg] Fehler bei Thumbnail: {error}")
 
 
-
 @receiver(post_delete, sender=Video)
 def delete_file(sender, instance, *args, **kwargs):
     print(f"[Signal] Video mit ID {instance.id} gelöscht.")
     print(instance.url.path)
     delete_thumbnail(instance)
     delete_video(instance)
+    delete_all_progress(instance)
+
+
+def delete_all_progress(instance):
+    videoId = instance.id
+    queryset =  VideoProgress.objects.filter(video = videoId)
+    deleted_count, _ = queryset.delete()
 
 
 def delete_thumbnail(instance):
