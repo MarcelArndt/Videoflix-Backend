@@ -9,9 +9,6 @@ import glob
 import re
 
 
-# CMD_MP4 = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', output_path]
-# CMD_HLS = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time' '10', '-hls_playlist_type', 'vod', output_path]
-
 RESOLUTIONS = {
         'videos': {
             '1080p': '1920x1080',
@@ -22,6 +19,8 @@ RESOLUTIONS = {
         'thumbnails': '215:120'
     }
 
+STEPS_FOR_VIDEO_CONVERT = 100/6
+
 
 @receiver(post_save, sender=Video)
 def generate_video_data(sender, instance, created, **kwargs):
@@ -29,7 +28,6 @@ def generate_video_data(sender, instance, created, **kwargs):
         return
     queue = django_rq.get_queue('default', autocommit=True)
     queue.enqueue(generate_video_versions, instance)
-    #generate_video_versions(instance)
 
 
 def generate_video_versions(instance):
@@ -37,21 +35,26 @@ def generate_video_versions(instance):
     os.makedirs(output_dir, exist_ok=True)
     
     video = instance.url.path
+    generate_video_thumbnail(instance, video)
+    add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
     filename, file_ending = os.path.splitext(os.path.basename(video))
+    filename = filename[0:20]
 
     for resolution, size in RESOLUTIONS['videos'].items():
         output_path = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted', f'{filename}_{resolution}.m3u8')
         cmd = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time', '10', '-hls_playlist_type', 'vod','-hls_segment_filename', os.path.join(output_dir, f'{filename}_{resolution}_%03d.ts'), output_path]
         try:
-            subprocess.run(cmd, check=True)  
+            subprocess.run(cmd, check=True)
+            add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
         except subprocess.CalledProcessError as error:
             print(f"[ffmpeg] Fehler bei {resolution}: {error}")
     generate_master_playlist(filename,output_dir)
     master_path = generate_master_playlist(filename, output_dir)
+    add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
     relative_path = os.path.relpath(master_path, settings.MEDIA_ROOT)
     instance.url.name = relative_path
     instance.save()
-    generate_video_thumbnail(instance, video)
+
 
 
 def generate_master_playlist(filename,output_dir):
@@ -77,7 +80,7 @@ def generate_video_thumbnail(instance, orignal_video_path):
     os.makedirs(output_dir, exist_ok=True)
     name, file_Ending = os.path.splitext(os.path.basename(video))
     thumbnail_path = os.path.join(settings.MEDIA_ROOT, 'uploads/thumbnails', f"{instance.id}_thumb.jpg")
-    cmd = ['ffmpeg', '-y', '-ss', '00:00:24', '-i', orignal_video_path, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
+    cmd = ['ffmpeg', '-y', '-ss', '00:00:30', '-i', orignal_video_path, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
     try:
         subprocess.run(cmd, check=True)
         instance.thumbnail.name = f"uploads/thumbnails/{instance.id}_thumb.jpg"
@@ -85,11 +88,20 @@ def generate_video_thumbnail(instance, orignal_video_path):
     except subprocess.CalledProcessError as error:
         print(f"[ffmpeg] Fehler bei Thumbnail: {error}")
 
+def add_progress_for_current_convert_state(instance, value):
+    instance.current_convert_state += value
+    if instance.current_convert_state >= 100:
+        instance.current_convert_state = 100
+        instance.is_converted = True
+    instance.save()
+
 
 @receiver(post_delete, sender=Video)
 def delete_file(sender, instance, *args, **kwargs):
-    print(f"[Signal] Video mit ID {instance.id} gelöscht.")
-    print(instance.url.path)
+    queue = django_rq.get_queue('default', autocommit=True)
+    queue.enqueue(delete_video, instance)
+
+def delete_video(instance):
     delete_thumbnail(instance)
     delete_video(instance)
     delete_all_progress(instance)

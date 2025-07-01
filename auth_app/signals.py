@@ -7,9 +7,15 @@ from django.db.models.signals import post_save, post_delete
 from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.contrib.auth.models import User
+import django_rq
 
 @receiver(post_save, sender=Profiles)
 def send_verification_email(sender, instance, created, **kwargs):
+    queue = django_rq.get_queue('default', autocommit=True)
+    queue.enqueue(sendMail,created, instance)
+
+def sendMail(created, instance):
+
     if created:
         subject = "Willkommen bei Videoflix"
         from_email = "noreply@videoflix.de"

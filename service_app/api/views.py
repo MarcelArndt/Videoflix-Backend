@@ -8,6 +8,12 @@ from rest_framework import status
 from django.core.cache import cache
 from auth_app.auth import CookieJWTAuthentication
 from django.contrib.auth.models import User
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+django.setup()
+
+CACHE_TIMER = os.getenv('CACHE_TIMER', default=0)
 
 class ProfilesListView(generics.ListAPIView):
     queryset = Profiles.objects.all()
@@ -54,7 +60,7 @@ class VideosListView(APIView):
         videos = Video.objects.all()
         serialized = VideosSerializer(videos, many=True, context={'request': request}).data
         grouped = self.groupFactory(serialized, request)
-        cache.set(cache_key, grouped, timeout=600)
+        cache.set(cache_key, grouped, timeout=CACHE_TIMER)
         return Response(grouped)
     
     def post(self, request):

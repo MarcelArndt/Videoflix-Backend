@@ -11,9 +11,9 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", default="localhost").split(",")
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="http://localhost:4200").split(",")
 CORS_ALLOWED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="http://localhost:4200").split(",")
 
-CORS_ALLOW_CREDENTIALS = True
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = False
+CORS_ALLOW_CREDENTIALS = os.environ.get("CORS_ALLOW_CREDENTIALS", "True") == "True"
+CSRF_COOKIE_SECURE = os.environ.get("COOKIES_SECURE", "True") == "True"
+SESSION_COOKIE_SECURE =  os.environ.get("SESSION_COOKIE_SECURE", "True") == "True"
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -74,7 +74,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 
-if os.getenv("USE_SQLITE_FOR_DEV") == "1":
+if os.getenv("USE_SQLITE_FOR_DEVELOP"):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

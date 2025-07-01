@@ -22,6 +22,8 @@ class Video(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     thumbnail = models.FileField(upload_to="uploads/thumbnails", blank=True)
     url = models.FileField(upload_to="uploads/videos/originals")
+    is_converted = models.BooleanField(default=False)
+    current_convert_state = models.FloatField(default=0.0)
 
     def __str__(self):
         return f'Id: {self.pk} | HeadLine: {self.headline} |  Genre:{self.genre} | created at: {self.created_at}' 

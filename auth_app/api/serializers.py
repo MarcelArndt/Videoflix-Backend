@@ -16,6 +16,7 @@ from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth import authenticate
+import django_rq
 
 load_dotenv()
 
@@ -162,7 +163,8 @@ class ResetValidationEmailSerializer(serializers.Serializer):
         profil =  user.abstract_user
         if not profil:
             raise serializers.ValidationError({'error':"User not found"})
-        self.send_validation_email(profil)
+        queue = django_rq.get_queue('default', autocommit=True)
+        queue.enqueue(self.send_validation_email,profil)
         return {"message": "email was sent."}
 
     def send_validation_email(self, profil):

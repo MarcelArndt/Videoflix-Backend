@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from service_app.models import Video, Profiles, VideoProgress
 
+
 class VideosSerializer(serializers.ModelSerializer):
     
     class Meta:

@@ -132,7 +132,7 @@ class CookieIsAuthenticatedAndVerifiedView(APIView):
     def post(self, request):
         if self.request.user and self.request.user.is_authenticated:
              serializer = UserIsAuthenticadeAndVerified(instance=request.user, context={'request': request})
-             return Response({'authenticated': True, 'email_confirmed': serializer.data, 'message': 'User is authenticated' }, status=status.HTTP_200_OK)
+             return Response({'authenticated': True, 'email_confirmed': request.user.abstract_user.email_is_confirmed, 'message': 'User is authenticated' }, status=status.HTTP_200_OK)
         else:
              return Response({'authenticated': False, 'email_confirmed': None, 'message': 'User is not authenticated' }, status=status.HTTP_200_OK)
 
