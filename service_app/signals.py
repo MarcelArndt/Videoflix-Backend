@@ -2,11 +2,12 @@ import os
 import subprocess
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Video, VideoProgress
+from .models import Video, VideoProgress, CurrentVideoConvertProgress
 from django.conf import settings
 import django_rq
 import glob
 import re
+import time
 
 
 RESOLUTIONS = {
@@ -34,26 +35,31 @@ def generate_video_versions(instance):
     output_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted')
     os.makedirs(output_dir, exist_ok=True)
     
-    video = instance.url.path
-    generate_video_thumbnail(instance, video)
-    add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
-    filename, file_ending = os.path.splitext(os.path.basename(video))
-    filename = filename[0:20]
+    try:
+        video = instance.url.path
+        generate_video_thumbnail(instance, video)
+        add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
+        filename, file_ending = os.path.splitext(os.path.basename(video))
+        filename = filename[0:20]
 
-    for resolution, size in RESOLUTIONS['videos'].items():
-        output_path = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted', f'{filename}_{resolution}.m3u8')
-        cmd = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time', '10', '-hls_playlist_type', 'vod','-hls_segment_filename', os.path.join(output_dir, f'{filename}_{resolution}_%03d.ts'), output_path]
-        try:
-            subprocess.run(cmd, check=True)
-            add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
-        except subprocess.CalledProcessError as error:
-            print(f"[ffmpeg] Fehler bei {resolution}: {error}")
-    generate_master_playlist(filename,output_dir)
-    master_path = generate_master_playlist(filename, output_dir)
-    add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
-    relative_path = os.path.relpath(master_path, settings.MEDIA_ROOT)
-    instance.url.name = relative_path
-    instance.save()
+        for resolution, size in RESOLUTIONS['videos'].items():
+            output_path = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted', f'{filename}_{resolution}.m3u8')
+            cmd = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time', '10', '-hls_playlist_type', 'vod','-hls_segment_filename', os.path.join(output_dir, f'{filename}_{resolution}_%03d.ts'), output_path]
+            try:
+                subprocess.run(cmd, check=True)
+                add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
+            except subprocess.CalledProcessError as error:
+                print(f"[ffmpeg] Fehler bei {resolution}: {error}")
+        generate_master_playlist(filename,output_dir)
+        master_path = generate_master_playlist(filename, output_dir)
+        add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
+        relative_path = os.path.relpath(master_path, settings.MEDIA_ROOT)
+        instance.url.name = relative_path
+        instance.save()
+    except:
+        print('something went Wrong!')
+    finally:
+        CurrentVideoConvertProgress.objects.filter(video=instance).delete()
 
 
 
@@ -74,13 +80,32 @@ def generate_master_playlist(filename,output_dir):
     return master_playlist_path
 
 
+def get_video_duration(video_path):
+    try:
+        cmd = [
+                'ffprobe', '-v', 'error', '-show_entries',
+                'format=duration', '-of',
+                'default=noprint_wrappers=1:nokey=1', video_path
+            ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+        duration = float(result.stdout / 8)
+        if duration <= 0.0:
+            return '00:00:01'
+        formatted = time.strftime('%H:%M:%S', time.gmtime(duration))
+        return formatted
+    except:
+        print('Fehler beim Abrufen der Videodatei.')
+        return '00:00:01'
+
+
 def generate_video_thumbnail(instance, orignal_video_path):
     video = instance.url.path
     output_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/thumbnails')
     os.makedirs(output_dir, exist_ok=True)
     name, file_Ending = os.path.splitext(os.path.basename(video))
+    thumbnail_time = get_video_duration(orignal_video_path)
     thumbnail_path = os.path.join(settings.MEDIA_ROOT, 'uploads/thumbnails', f"{instance.id}_thumb.jpg")
-    cmd = ['ffmpeg', '-y', '-ss', '00:00:30', '-i', orignal_video_path, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
+    cmd = ['ffmpeg', '-y', '-ss', f'{thumbnail_time}', '-i', orignal_video_path, '-frames:v', '1', '-vf', f"scale={RESOLUTIONS['thumbnails']}", thumbnail_path ]
     try:
         subprocess.run(cmd, check=True)
         instance.thumbnail.name = f"uploads/thumbnails/{instance.id}_thumb.jpg"

@@ -23,7 +23,7 @@ class Video(models.Model):
     thumbnail = models.FileField(upload_to="uploads/thumbnails", blank=True)
     url = models.FileField(upload_to="uploads/videos/originals")
     is_converted = models.BooleanField(default=False)
-    current_convert_state = models.FloatField(default=0.0)
+    current_convert_state = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
 
     def __str__(self):
         return f'Id: {self.pk} | HeadLine: {self.headline} |  Genre:{self.genre} | created at: {self.created_at}' 
@@ -35,3 +35,7 @@ class VideoProgress(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE)
     current_time = models.FloatField()
     is_finished = models.BooleanField(default=False)
+
+
+class CurrentVideoConvertProgress(models.Model):
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='video_convert_progress')

@@ -1,7 +1,7 @@
 from rest_framework import generics
-from service_app.models import Video, Profiles, VideoProgress
+from service_app.models import Video, Profiles, VideoProgress, CurrentVideoConvertProgress
 from rest_framework.views import APIView
-from .serializers import ProfilesSerializer, VideosSerializer, VideoProgressSerializer
+from .serializers import ProfilesSerializer, VideosSerializer, VideoProgressSerializer, CurrentVideoConvertProgressSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -140,4 +140,15 @@ class VideoProgressDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def perform_update(self, serializer):
         return super().perform_update(serializer)
+    
+class CurrentVideoConvertProgressListView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+    serializer_class = CurrentVideoConvertProgressSerializer
+    queryset = CurrentVideoConvertProgress.objects.all() 
 
+class CurrentVideoConvertProgressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CookieJWTAuthentication]
+    serializer_class = CurrentVideoConvertProgressSerializer
+    queryset = CurrentVideoConvertProgress.objects.all() 
