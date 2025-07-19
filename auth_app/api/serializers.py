@@ -17,7 +17,7 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth import authenticate
 import django_rq
-
+from auth_app.utils import send_validation_email
 load_dotenv()
 
 class RegestrationSerializer(serializers.ModelSerializer):
@@ -160,24 +160,14 @@ class ResetValidationEmailSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = self.context['request'].user
-        profil =  user.abstract_user
+        profil =  getattr(user, "abstract_user", None)
         if not profil:
             raise serializers.ValidationError({'error':"User not found"})
         queue = django_rq.get_queue('default', autocommit=True)
-        queue.enqueue(self.send_validation_email,profil)
+        queue.enqueue(send_validation_email,profil.id)
         return {"message": "email was sent."}
 
-    def send_validation_email(self, profil):
-        subject = "Willkommen bei Videoflix"
-        from_email = "noreply@videoflix.de"
-        context = {
-            "username": profil.user.username,
-            "verify_link": f"http://127.0.0.1:8000/api/verify-email/?token={profil.email_token}"
-        }
-        html_content = render_to_string("emails/verification_email.html", context)
-        email = EmailMultiAlternatives(subject, "", from_email, [profil.user.email])
-        email.attach_alternative(html_content, "text/html")
-        email.send()
+
     
 
 
