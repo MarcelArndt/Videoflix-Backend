@@ -8,6 +8,7 @@ from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.contrib.auth.models import User
 import django_rq
+import os
 
 @receiver(post_save, sender=Profiles)
 def send_verification_email(sender, instance, created, **kwargs):
@@ -19,9 +20,10 @@ def sendMail(created, instance):
     if created:
         subject = "Willkommen bei Videoflix"
         from_email = "noreply@videoflix.de"
+        basis_url_backend =  os.environ.get("BASIS_URL_BACKEND", default="http://localhost:8000")
         context = {
             "username": instance.user.username,
-            "verify_link": f"http://127.0.0.1:8000/api/verify-email/?token={instance.email_token}"
+            "verify_link": f"{basis_url_backend}/api/verify-email/?token={instance.email_token}"
         }
         html_content = render_to_string("emails/verification_email.html", context)
         email = EmailMultiAlternatives(subject, "", from_email, [instance.user.email])

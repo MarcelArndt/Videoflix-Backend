@@ -141,7 +141,8 @@ class CookieIsAuthenticatedAndVerifiedView(APIView):
 class VerifyEmailView(APIView):
     def get(self, request):
         token = request.GET.get('token')
-        url = os.environ.get('URL_FOR_VERIFY_USER')
+        base_url_frontend = os.environ.get('BASIS_URL_FRONTENT', default='http://localhost:4200')
+        url = f"{base_url_frontend}/sign_up/validated"
         try:
             user = Profiles.objects.get(email_token=token)
             user.email_is_confirmed = True

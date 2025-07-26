@@ -112,8 +112,9 @@ class SendEmailForResetPasswordSerializer(serializers.Serializer):
         token  = default_token_generator.make_token(user)
         username = user.username
         user_email = user.email
-        base_url = os.environ.get('URL_FOR_RESET_PASSWORD')
-        reset_link = f"{base_url}?user={userId}&token={token}"
+        base_url_frontend = os.environ.get('BASIS_URL_FRONTENT', default="http://localhost:4200")
+        url = f'{base_url_frontend}/forgot_pw/reset-password'
+        reset_link = f"{url}?user={userId}&token={token}"
         self.send_email_to_user(username, user_email, reset_link)
         return {"user" : 'email in on the way'}
 
