@@ -88,10 +88,11 @@ def get_video_duration(video_path):
                 'default=noprint_wrappers=1:nokey=1', video_path
             ]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-        duration = float(result.stdout / 8)
+        duration = float(result.stdout)
         if duration <= 0.0:
             return '00:00:01'
-        formatted = time.strftime('%H:%M:%S', time.gmtime(duration))
+        screenshot_time = duration / 3
+        formatted = time.strftime('%H:%M:%S', time.gmtime(screenshot_time))
         return formatted
     except:
         print('Fehler beim Abrufen der Videodatei.')
@@ -146,13 +147,11 @@ def delete_thumbnail(instance):
     
 
 def delete_video(instance):
-    print(instance.url)
     if not instance.url:
         return
     original_path = instance.url.path
     filename, file_ending = os.path.splitext(os.path.basename(original_path))
     base_filename = re.sub(r'_(master|360p|480p|720p|1080p)$', '', filename)
-    print(base_filename)
 
     converted_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted')
     pattern = os.path.join(converted_dir, f"{base_filename}_*")
