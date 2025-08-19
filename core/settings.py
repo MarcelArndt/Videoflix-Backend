@@ -14,6 +14,7 @@ CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", default="http://lo
 CORS_ALLOW_CREDENTIALS = os.environ.get("CORS_ALLOW_CREDENTIALS", "True") == "True"
 CSRF_COOKIE_SECURE = os.environ.get("COOKIES_SECURE", "True") == "True"
 SESSION_COOKIE_SECURE =  os.environ.get("SESSION_COOKIE_SECURE", "True") == "True"
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'django.contrib.admin',

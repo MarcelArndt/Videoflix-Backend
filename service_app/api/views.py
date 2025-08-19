@@ -48,7 +48,6 @@ class VideosListView(APIView):
             grouped[genre]['content'].append(item)
         return grouped
         
-
     def get(self, request):
         access_token = request.COOKIES.get('access_key')
         cache_key = 'video_list_view'
@@ -73,8 +72,7 @@ class VideosListView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-class VideosDetailView(generics.RetrieveDestroyAPIView):
+class VideosDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Video.objects.all()
     serializer_class = VideosSerializer
 
