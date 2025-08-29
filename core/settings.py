@@ -37,6 +37,7 @@ CORS_ALLOW_HEADERS = [
     "content-type",
     "authorization",
     "x-csrftoken",
+    "range",
 ]
 
 INTERNAL_IPS = [
@@ -75,7 +76,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 
-if os.getenv("USE_SQLITE_FOR_DEVELOP"):
+if os.getenv("DEBUG"):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

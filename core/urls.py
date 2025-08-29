@@ -5,7 +5,7 @@ from django.urls import path, include
 from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("api/admin/", admin.site.urls),
     path("api/", include('service_app.api.urls')),
     path("api/", include('auth_app.api.urls')),
     path('django-rq/', include('django_rq.urls')),
