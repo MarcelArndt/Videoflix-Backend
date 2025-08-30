@@ -34,33 +34,49 @@ def generate_video_data(sender, instance, created, **kwargs):
 def generate_video_versions(instance):
     output_dir = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted')
     os.makedirs(output_dir, exist_ok=True)
-    
     try:
         video = instance.url.path
         generate_video_thumbnail(instance, video)
-        add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
         filename, file_ending = os.path.splitext(os.path.basename(video))
         filename = filename[0:20]
-
         for resolution, size in RESOLUTIONS['videos'].items():
             output_path = os.path.join(settings.MEDIA_ROOT, 'uploads/videos/converted', f'{filename}_{resolution}.m3u8')
-            cmd = ['ffmpeg', '-i', video, '-vf', f'scale={size}', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac','-b:a', '128k','-hls_time', '10', '-hls_playlist_type', 'vod','-hls_segment_filename', os.path.join(output_dir, f'{filename}_{resolution}_%03d.ts'), output_path]
             try:
-                subprocess.run(cmd, check=True)
-                add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
+                ffmpeg_converting_process(filename,  size, resolution, video, output_dir, output_path)
+                add_progress_for_current_convert_state(instance)
             except subprocess.CalledProcessError as error:
                 print(f"[ffmpeg] Fehler bei {resolution}: {error}")
-        generate_master_playlist(filename,output_dir)
         master_path = generate_master_playlist(filename, output_dir)
-        add_progress_for_current_convert_state(instance, STEPS_FOR_VIDEO_CONVERT)
-        relative_path = os.path.relpath(master_path, settings.MEDIA_ROOT)
-        instance.url.name = relative_path
-        instance.save()
-    except:
-        print('something went Wrong!')
+        save_new_video_path(instance, master_path)
+    except Exception as error:
+        print(f'something went Wrong! {error}')
     finally:
         CurrentVideoConvertProgress.objects.filter(video=instance).delete()
 
+
+def ffmpeg_converting_process(filename,  size, resolution, video, output_dir, output_path):
+        cmd = [
+                'ffmpeg', '-i', video,
+                '-vf', f'scale={size}',
+                '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
+                '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2',
+                '-g', '48', '-keyint_min', '48', '-sc_threshold', '0',
+                '-force_key_frames', 'expr:gte(t,n_forced*2)',
+                '-max_muxing_queue_size', '9999',
+                '-f', 'hls',
+                '-hls_time', '6',
+                '-hls_playlist_type', 'vod',
+                '-hls_segment_filename', os.path.join(output_dir, f'{filename}_{resolution}_%03d.ts'),
+                output_path
+            ]
+        subprocess.run(cmd, check=True)
+    
+
+def save_new_video_path(instance, master_path):
+    add_progress_for_current_convert_state(instance)
+    relative_path = os.path.relpath(master_path, settings.MEDIA_ROOT)
+    instance.url.name = relative_path
+    instance.save()
 
 
 def generate_master_playlist(filename,output_dir):
@@ -111,11 +127,13 @@ def generate_video_thumbnail(instance, orignal_video_path):
         subprocess.run(cmd, check=True)
         instance.thumbnail.name = f"uploads/thumbnails/{instance.id}_thumb.jpg"
         instance.save()
+        add_progress_for_current_convert_state(instance)
     except subprocess.CalledProcessError as error:
         print(f"[ffmpeg] Fehler bei Thumbnail: {error}")
 
-def add_progress_for_current_convert_state(instance, value):
-    instance.current_convert_state += value
+
+def add_progress_for_current_convert_state(instance):
+    instance.current_convert_state += STEPS_FOR_VIDEO_CONVERT
     if instance.current_convert_state >= 100:
         instance.current_convert_state = 100
         instance.is_converted = True
@@ -126,6 +144,7 @@ def add_progress_for_current_convert_state(instance, value):
 def delete_file(sender, instance, *args, **kwargs):
     queue = django_rq.get_queue('default', autocommit=True)
     queue.enqueue(delete_video, instance)
+
 
 def delete_video(instance):
     delete_thumbnail(instance)
@@ -167,7 +186,3 @@ def delete_video(instance):
 
     if os.path.exists(original_path):
         os.remove(original_path)
-
-
-
-
